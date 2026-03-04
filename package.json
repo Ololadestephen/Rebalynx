@@ -1,0 +1,27 @@
+{
+  "name": "starkyield-agent",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:worker": "npm run worker --workspace backend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:worker\"",
+    "build": "npm run build --workspace shared && npm run build --workspace backend && npm run build --workspace frontend",
+    "test": "npm run test --workspace shared && npm run test --workspace backend && npm run test --workspace frontend",
+    "lint": "npm run lint --workspace backend && npm run lint --workspace frontend",
+    "prod:up": "pm2 start ecosystem.config.cjs",
+    "prod:restart": "pm2 restart ecosystem.config.cjs",
+    "prod:logs": "pm2 logs",
+    "prod:down": "pm2 delete ecosystem.config.cjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  }
+}
