@@ -46,6 +46,14 @@ export function createApp(deps: AppDeps = {}) {
   app.use(express.json());
   app.use(apiRateLimit);
 
+  app.get("/", (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      service: "rebalynx-backend",
+      health: "/health"
+    });
+  });
+
   app.get("/health", (_req, res) => {
     res.status(200).json({ ok: true });
   });
