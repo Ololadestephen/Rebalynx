@@ -135,35 +135,10 @@ This starts:
 - `npm run dev --workspace frontend`
 - `npm run build --workspace frontend`
 
-## API Endpoints
-
-### Health
-
-- `GET /`
-- `GET /health`
-
-### Pools / Portfolio
-
-- `GET /api/pools`
-- `GET /api/portfolio/:wallet`
-- `GET /api/positions/:wallet`
-
-### Transactions / Activity
-
-- `GET /api/transactions/:wallet`
-- `GET /api/rebalance/activity/:wallet`
-
-### Actions
-
-- `POST /api/deposit`
-- `POST /api/withdraw`
-- `POST /api/rebalance/enable`
-- `POST /api/rebalance/disable`
-- `GET /api/rebalance/status/:wallet`
 
 ## Deployment
 
-### Recommended Production Layout
+### Production Layout
 
 - Frontend: Vercel project (root: `frontend`)
 - Backend: separate Vercel project (root: `backend`)
@@ -210,9 +185,6 @@ npm run prod:down
 
 - Backend now provides root health JSON; if missing, deploy latest backend
 
-### Wallet/portfolio mismatch due to address format
-
-- Backend normalizes wallet addresses (`0x0131...` and `0x131...` map correctly)
 
 ## Security Notes
 
