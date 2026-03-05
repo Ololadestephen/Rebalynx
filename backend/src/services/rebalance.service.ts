@@ -14,6 +14,10 @@ export class RebalanceService {
   ) {}
 
   async enable(wallet: string, poolId: string, threshold: number): Promise<void> {
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error("Database unavailable");
+    }
+
     const current = await PositionModel.findOne({ wallet }).lean();
     await PositionModel.findOneAndUpdate(
       { wallet },
@@ -30,6 +34,10 @@ export class RebalanceService {
   }
 
   async disable(wallet: string): Promise<void> {
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error("Database unavailable");
+    }
+
     await PositionModel.findOneAndUpdate(
       { wallet },
       {
@@ -62,6 +70,11 @@ export class RebalanceService {
   }
 
   async runMonitorTick(): Promise<void> {
+    if (mongoose.connection.readyState !== 1) {
+      logger.warn("Skipping monitor tick because MongoDB is disconnected");
+      return;
+    }
+
     const positions = await PositionModel.find({ monitoring: true, enabled: true }).lean();
 
     for (const position of positions) {

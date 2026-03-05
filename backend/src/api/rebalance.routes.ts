@@ -32,6 +32,10 @@ export function createRebalanceRouter(rebalanceService: RebalanceService, signat
       await rebalanceService.enable(payload.wallet, payload.poolId, payload.threshold);
       return res.status(200).json({ ok: true });
     } catch (error) {
+      const message = (error as Error).message ?? "";
+      if (message.includes("Database unavailable")) {
+        return res.status(503).json({ error: "Database unavailable. Check MONGODB_URI and redeploy backend." });
+      }
       return next(error);
     }
   });
@@ -48,6 +52,10 @@ export function createRebalanceRouter(rebalanceService: RebalanceService, signat
       await rebalanceService.disable(payload.wallet);
       return res.status(200).json({ ok: true });
     } catch (error) {
+      const message = (error as Error).message ?? "";
+      if (message.includes("Database unavailable")) {
+        return res.status(503).json({ error: "Database unavailable. Check MONGODB_URI and redeploy backend." });
+      }
       return next(error);
     }
   });
