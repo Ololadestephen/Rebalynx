@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { RebalanceService } from "../services/rebalance.service.js";
 import { SignatureService } from "../services/signature.service.js";
+import { normalizeWalletAddress } from "../utils/wallet.js";
 
 const enableSchema = z.object({
   wallet: z.string().min(3),
@@ -23,13 +24,14 @@ export function createRebalanceRouter(rebalanceService: RebalanceService, signat
   router.post("/enable", async (req, res, next) => {
     try {
       const payload = enableSchema.parse(req.body);
+      const wallet = normalizeWalletAddress(payload.wallet);
 
-      const verified = signatureService.verifySignature(payload.wallet, payload.signature, payload.message);
+      const verified = signatureService.verifySignature(wallet, payload.signature, payload.message);
       if (!verified) {
         return res.status(401).json({ error: "Invalid wallet signature" });
       }
 
-      await rebalanceService.enable(payload.wallet, payload.poolId, payload.threshold);
+      await rebalanceService.enable(wallet, payload.poolId, payload.threshold);
       return res.status(200).json({ ok: true });
     } catch (error) {
       const message = (error as Error).message ?? "";
@@ -43,13 +45,14 @@ export function createRebalanceRouter(rebalanceService: RebalanceService, signat
   router.post("/disable", async (req, res, next) => {
     try {
       const payload = disableSchema.parse(req.body);
+      const wallet = normalizeWalletAddress(payload.wallet);
 
-      const verified = signatureService.verifySignature(payload.wallet, payload.signature, payload.message);
+      const verified = signatureService.verifySignature(wallet, payload.signature, payload.message);
       if (!verified) {
         return res.status(401).json({ error: "Invalid wallet signature" });
       }
 
-      await rebalanceService.disable(payload.wallet);
+      await rebalanceService.disable(wallet);
       return res.status(200).json({ ok: true });
     } catch (error) {
       const message = (error as Error).message ?? "";
@@ -62,7 +65,7 @@ export function createRebalanceRouter(rebalanceService: RebalanceService, signat
 
   router.get("/status/:wallet", async (req, res, next) => {
     try {
-      const wallet = z.string().min(3).parse(req.params.wallet);
+      const wallet = normalizeWalletAddress(z.string().min(3).parse(req.params.wallet));
       const status = await rebalanceService.status(wallet);
       return res.status(200).json(status);
     } catch (error) {
