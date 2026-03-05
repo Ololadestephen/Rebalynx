@@ -1,11 +1,24 @@
 import type { PortfolioResponse } from "@starkyield/shared";
+import mongoose from "mongoose";
 import { PositionModel } from "../models/position.model.js";
 import { PoolService } from "./pool.service.js";
+import { logger } from "../utils/logger.js";
 
 export class PortfolioService {
   constructor(private readonly poolService = new PoolService()) {}
 
   async getWalletPortfolio(wallet: string): Promise<PortfolioResponse> {
+    if (mongoose.connection.readyState !== 1) {
+      logger.warn({ wallet }, "Portfolio requested while MongoDB is disconnected");
+      return {
+        wallet,
+        totalValueUsd: 0,
+        depositedUsd: 0,
+        currentPool: null,
+        monitoringEnabled: false
+      };
+    }
+
     const position = await PositionModel.findOne({ wallet }).lean();
 
     if (!position) {

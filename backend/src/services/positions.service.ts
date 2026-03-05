@@ -1,8 +1,15 @@
 import type { PositionSummary } from "@starkyield/shared";
+import mongoose from "mongoose";
 import { TransactionModel } from "../models/transaction.model.js";
+import { logger } from "../utils/logger.js";
 
 export class PositionsService {
   async listWalletPositions(wallet: string): Promise<PositionSummary[]> {
+    if (mongoose.connection.readyState !== 1) {
+      logger.warn({ wallet }, "Positions requested while MongoDB is disconnected");
+      return [];
+    }
+
     const rows = await TransactionModel.aggregate<{
       wallet: string;
       poolId: string;

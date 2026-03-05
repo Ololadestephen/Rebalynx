@@ -40,6 +40,16 @@ export class RebalanceService {
   }
 
   async status(wallet: string): Promise<RebalanceStatusResponse> {
+    if (mongoose.connection.readyState !== 1) {
+      logger.warn({ wallet }, "Rebalance status requested while MongoDB is disconnected");
+      return {
+        enabled: false,
+        monitoring: false,
+        pool: null,
+        threshold: 0
+      };
+    }
+
     const position = await PositionModel.findOne({ wallet }).lean();
 
     return {
