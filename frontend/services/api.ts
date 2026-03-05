@@ -1,7 +1,8 @@
 import axios from "axios";
 
 function normalizeBackendBaseUrl(rawUrl: string): string {
-  const trimmed = rawUrl.replace(/\/+$/, "");
+  const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+  const trimmed = withProtocol.replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed.slice(0, -4) : trimmed;
 }
 
