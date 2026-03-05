@@ -37,30 +37,34 @@ export function createDepositRouter(poolService: PoolService, starknetService: S
         txHash = tx.txHash;
       }
 
-      if (mongoose.connection.readyState === 1) {
-        await PositionModel.findOneAndUpdate(
-          { wallet: payload.wallet },
-          {
-            wallet: payload.wallet,
-            poolId: payload.poolId,
-            $inc: { depositedUsd: payload.amount },
-            threshold: 1,
-            monitoring: false,
-            enabled: false
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
+      if (mongoose.connection.readyState !== 1) {
+        if (process.env.NODE_ENV === "test") {
+          logger.warn({ wallet: payload.wallet }, "Skipping position persistence in test without MongoDB");
+          return res.status(200).json({ status: "success", txHash });
+        }
+        return res.status(503).json({ error: "Database unavailable. Deposit not persisted." });
+      }
 
-        await TransactionModel.create({
+      await PositionModel.findOneAndUpdate(
+        { wallet: payload.wallet },
+        {
           wallet: payload.wallet,
           poolId: payload.poolId,
-          amountUsd: payload.amount,
-          txHash,
-          type: "deposit"
-        });
-      } else {
-        logger.warn({ wallet: payload.wallet }, "Skipping position persistence because MongoDB is not connected");
-      }
+          $inc: { depositedUsd: payload.amount },
+          threshold: 1,
+          monitoring: false,
+          enabled: false
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      await TransactionModel.create({
+        wallet: payload.wallet,
+        poolId: payload.poolId,
+        amountUsd: payload.amount,
+        txHash,
+        type: "deposit"
+      });
 
       return res.status(200).json({ status: "success", txHash });
     } catch (error) {

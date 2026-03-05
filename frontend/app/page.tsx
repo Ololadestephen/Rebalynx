@@ -228,7 +228,11 @@ export default function AppPage() {
             <RebalancePanel wallet={wallet} defaultPoolId={rebalanceTargetPoolId || defaultRebalancePoolId} />
           ) : (
             <div className="p-4 rounded-2xl border border-dashed border-white/10 text-center">
-              <p className="text-xs text-slate-500">Connect wallet to enable rebalancing</p>
+              <p className="text-xs text-slate-500">
+                {wallet
+                  ? "Open a position first to enable auto-rebalancing."
+                  : "Connect wallet to enable rebalancing"}
+              </p>
             </div>
           )}
         </section>

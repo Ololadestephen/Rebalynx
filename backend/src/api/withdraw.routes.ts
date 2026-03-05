@@ -37,33 +37,37 @@ export function createWithdrawRouter(poolService: PoolService, starknetService: 
         txHash = tx.txHash;
       }
 
-      if (mongoose.connection.readyState === 1) {
-        const current = await PositionModel.findOne({ wallet: payload.wallet }).lean();
-        const nextDeposited = Math.max(0, (current?.depositedUsd ?? 0) - payload.amount);
+      if (mongoose.connection.readyState !== 1) {
+        if (process.env.NODE_ENV === "test") {
+          logger.warn({ wallet: payload.wallet }, "Skipping withdraw persistence in test without MongoDB");
+          return res.status(200).json({ status: "success", txHash });
+        }
+        return res.status(503).json({ error: "Database unavailable. Withdraw not persisted." });
+      }
 
-        await PositionModel.findOneAndUpdate(
-          { wallet: payload.wallet },
-          {
-            wallet: payload.wallet,
-            poolId: payload.poolId,
-            depositedUsd: nextDeposited,
-            threshold: current?.threshold ?? 1,
-            monitoring: nextDeposited > 0 ? (current?.monitoring ?? false) : false,
-            enabled: nextDeposited > 0 ? (current?.enabled ?? false) : false
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
+      const current = await PositionModel.findOne({ wallet: payload.wallet }).lean();
+      const nextDeposited = Math.max(0, (current?.depositedUsd ?? 0) - payload.amount);
 
-        await TransactionModel.create({
+      await PositionModel.findOneAndUpdate(
+        { wallet: payload.wallet },
+        {
           wallet: payload.wallet,
           poolId: payload.poolId,
-          amountUsd: payload.amount,
-          txHash,
-          type: "withdraw"
-        });
-      } else {
-        logger.warn({ wallet: payload.wallet }, "Skipping withdraw persistence because MongoDB is not connected");
-      }
+          depositedUsd: nextDeposited,
+          threshold: current?.threshold ?? 1,
+          monitoring: nextDeposited > 0 ? (current?.monitoring ?? false) : false,
+          enabled: nextDeposited > 0 ? (current?.enabled ?? false) : false
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      await TransactionModel.create({
+        wallet: payload.wallet,
+        poolId: payload.poolId,
+        amountUsd: payload.amount,
+        txHash,
+        type: "withdraw"
+      });
 
       return res.status(200).json({ status: "success", txHash });
     } catch (error) {
