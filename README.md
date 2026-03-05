@@ -1,35 +1,53 @@
 # Rebalynx
 
-Rebalynx is a full-stack DeFi yield aggregator and automation agent built for **Starknet Sepolia**.
+Rebalynx is a full-stack DeFi yield aggregator and automation agent on Starknet Sepolia.
 
-Users can:
-- connect wallet (Argent X / Braavos)
-- discover top Starknet yield pools
-- deposit into a selected pool
-- enable automated rebalancing when better APR opportunities appear
+Users can connect a wallet, discover high-yield pools, deposit funds, enable auto-rebalance, and monitor portfolio/activity in a single-page dashboard.
+
+## Features
+
+- Wallet connect (Argent X / Braavos)
+- Live Starknet pool discovery (APR-sorted)
+- On-chain deposit flow with explorer links
+- Position management (deposit more, cash out)
+- Auto-rebalance controls (enable/disable, target pool)
+- Background worker for scheduled rebalance checks
+- Portfolio, positions, and activity tracking
+- Strong API validation, rate limiting, and retry guards
 
 ## Tech Stack
 
 ### Frontend
+
 - Next.js 14 (App Router)
 - TypeScript
-- TailwindCSS
+- Tailwind CSS
 - React Query
 - starknet.js
 - starkzap
+- Vercel Analytics
 
 ### Backend
+
 - Node.js + Express
 - TypeScript
 - MongoDB + Mongoose
 - node-cron
 - starknet.js
-- starkzap
+- zod
 
 ### Shared
-- `@starkyield/shared` workspace package for shared types/contracts
 
-## Monorepo Structure
+- `@starkyield/shared` for shared types/contracts
+
+## Architecture
+
+- Monorepo with workspaces: `frontend`, `backend`, `shared`
+- Frontend calls backend REST API
+- Backend persists positions/transactions/activity in MongoDB
+- Worker checks APR deltas every 30 minutes and executes rebalance logic
+
+## Repository Structure
 
 ```text
 rebalynx
@@ -40,8 +58,9 @@ rebalynx
 │  ├─ services
 │  └─ utils
 ├─ backend
+│  ├─ api                 # Vercel serverless entry
 │  └─ src
-│     ├─ api
+│     ├─ api              # Express routes
 │     ├─ config
 │     ├─ middleware
 │     ├─ models
@@ -53,219 +72,155 @@ rebalynx
 └─ README.md
 ```
 
-## Core Product Flow
+## Prerequisites
 
-1. User connects Starknet wallet
-2. Frontend fetches pools sorted by APR descending
-3. User deposits into selected pool
-4. User enables auto-rebalance with threshold (e.g. 1%)
-5. Worker checks monitored wallets every 30 minutes
-6. If `bestAPR - currentAPR > threshold`, funds are rebalanced
-
-## Current Implementation Notes
-
-- Pool data is currently mock/provider-backed in `PoolService` for hackathon stability.
-- Signature verification is a guarded hackathon-safe implementation and should be replaced by full account-contract verification for production.
-- Transaction execution path includes retry logic and is ready for deeper Starkzap strategy integration.
-
-## API Endpoints
-
-### `GET /health`
-Health check.
-
-### `GET /api/pools`
-Returns live Starknet pool list sorted by APR descending (source: DeFiLlama Starknet yields API).
-
-### `GET /api/portfolio/:wallet`
-Returns wallet-specific portfolio value from persisted deposits and current selected pool.
-
-### `GET /api/transactions/:wallet`
-Returns recent transaction history (deposit/rebalance records) for wallet.
-
-### `GET /api/rebalance/activity/:wallet`
-Returns recent rebalance monitoring activity timeline for wallet.
-
-### `POST /api/deposit`
-Creates a deposit transaction.
-
-Request body:
-```json
-{
-  "wallet": "0x123",
-  "poolId": "starkswap_eth_usdc",
-  "amount": "25"
-}
-```
-
-### `POST /api/rebalance/enable`
-Enables monitoring + rebalance for wallet.
-
-Request body:
-```json
-{
-  "wallet": "0x123",
-  "poolId": "starkswap_eth_usdc",
-  "threshold": 1,
-  "signature": ["0x1", "0x2"],
-  "message": "Enable Rebalynx auto-rebalance"
-}
-```
-
-### `POST /api/rebalance/disable`
-Disables monitoring for wallet.
-
-### `GET /api/rebalance/status/:wallet`
-Returns monitoring/rebalance status.
-
-Example response:
-```json
-{
-  "enabled": true,
-  "monitoring": true,
-  "pool": "starkswap_eth_usdc",
-  "threshold": 1,
-  "lastRebalance": "2026-03-04T10:00:00.000Z"
-}
-```
-
-## Database Schema
-
-Collection: `positions`
-
-Example document:
-```json
-{
-  "wallet": "0x123",
-  "poolId": "starkswap_eth_usdc",
-  "threshold": 1,
-  "monitoring": true,
-  "enabled": true,
-  "lastRebalance": "2026-03-04T10:00:00.000Z"
-}
-```
+- Node.js 20+
+- npm 10+
+- MongoDB (local or Atlas)
+- Starknet Sepolia wallet + test funds
 
 ## Environment Variables
 
-### `backend/.env`
+### Backend (`backend/.env` for local)
 
 ```env
 NODE_ENV=development
 PORT=4000
 MONGODB_URI=mongodb://127.0.0.1:27017/rebalynx
 FRONTEND_ORIGIN=http://localhost:3000
-STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8/YOUR_ALCHEMY_API_KEY
+STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8/YOUR_ALCHEMY_KEY
 REBALANCE_CRON=*/30 * * * *
 TX_MAX_RETRIES=3
 TX_SIMULATION_FALLBACK=false
 ```
 
-### `frontend/.env.local`
+### Frontend (`frontend/.env.local`)
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=http://localhost:4000
-NEXT_PUBLIC_STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8/YOUR_ALCHEMY_API_KEY
+NEXT_PUBLIC_STARKNET_RPC_URL=https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8/YOUR_ALCHEMY_KEY
 NEXT_PUBLIC_TX_EXPLORER_BASE_URL=https://sepolia.voyager.online/tx/
 ```
 
-## Getting Started
-
-### Prerequisites
-- Node.js 20+
-- npm 10+
-- MongoDB running locally or hosted
-- Argent X or Braavos wallet extension
-- Starknet Sepolia test funds
-
-### Install
+## Local Development
 
 ```bash
 npm install
-```
-
-### Run frontend + backend + worker (auto)
-
-```bash
 npm run dev
 ```
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:4000`
-- Worker: auto-started in `npm run dev`
+This starts:
 
-## Testing
+- frontend: `http://localhost:3000`
+- backend: `http://localhost:4000`
+- worker: auto-started by root `dev` script
 
-Run all tests:
+## Scripts
 
-```bash
-npm test
-```
+### Root
 
-Current coverage includes:
-- backend API route tests (in-process handler tests)
-- frontend component tests (`PoolCard`)
+- `npm run dev` - frontend + backend + worker
+- `npm run build` - build shared + backend + frontend
+- `npm run test` - run all tests
+- `npm run lint` - lint backend/frontend
 
-## Build
+### Backend
+
+- `npm run dev --workspace backend`
+- `npm run worker --workspace backend`
+- `npm run build --workspace backend`
+
+### Frontend
+
+- `npm run dev --workspace frontend`
+- `npm run build --workspace frontend`
+
+## API Endpoints
+
+### Health
+
+- `GET /`
+- `GET /health`
+
+### Pools / Portfolio
+
+- `GET /api/pools`
+- `GET /api/portfolio/:wallet`
+- `GET /api/positions/:wallet`
+
+### Transactions / Activity
+
+- `GET /api/transactions/:wallet`
+- `GET /api/rebalance/activity/:wallet`
+
+### Actions
+
+- `POST /api/deposit`
+- `POST /api/withdraw`
+- `POST /api/rebalance/enable`
+- `POST /api/rebalance/disable`
+- `GET /api/rebalance/status/:wallet`
+
+## Deployment
+
+### Recommended Production Layout
+
+- Frontend: Vercel project (root: `frontend`)
+- Backend: separate Vercel project (root: `backend`)
+- Database: MongoDB Atlas
+
+### Backend Vercel Env
+
+- `MONGODB_URI`
+- `FRONTEND_ORIGIN=https://rebalynx.vercel.app`
+- `STARKNET_RPC_URL=...`
+
+### Frontend Vercel Env
+
+- `NEXT_PUBLIC_BACKEND_URL=https://<backend-domain>`
+- `NEXT_PUBLIC_STARKNET_RPC_URL=...`
+- `NEXT_PUBLIC_TX_EXPLORER_BASE_URL=https://sepolia.voyager.online/tx/`
+
+## PM2 Production Mode (non-serverless)
+
+If deploying on a VM/container, PM2 config is included:
 
 ```bash
 npm run build
-```
-
-## Production Process Setup (API + Worker Auto-Restart)
-
-This project includes a PM2 config that runs both backend API and worker automatically.
-
-### 1. Build
-
-```bash
-npm run build
-```
-
-### 2. Start production processes
-
-```bash
 npm run prod:up
-```
-
-### 3. Useful PM2 commands
-
-```bash
-npm run prod:restart
 npm run prod:logs
+npm run prod:restart
 npm run prod:down
 ```
 
-Note: Install PM2 globally first if needed:
+## Troubleshooting
 
-```bash
-npm install -g pm2
-```
+### "Failed to load pools"
 
-## App Pages
+- Verify `NEXT_PUBLIC_BACKEND_URL` points to backend domain
+- Verify backend `/api/pools` returns 200
 
-- `/dashboard` - main DeFi UI
-- `/pools/[id]` - detailed view for selected pool
-- `/transactions` - wallet transaction history
-- `/rebalance/activity` - rebalance decision/execution timeline
+### "Database unavailable. Deposit not persisted."
 
-## Security Controls Included
+- Check backend `MONGODB_URI`
+- Check Atlas network allowlist and DB credentials
+- Redeploy backend after env changes
 
-- request validation with `zod`
+### `Cannot GET /`
+
+- Backend now provides root health JSON; if missing, deploy latest backend
+
+### Wallet/portfolio mismatch due to address format
+
+- Backend normalizes wallet addresses (`0x0131...` and `0x131...` map correctly)
+
+## Security Notes
+
+- zod input validation on API routes
 - API rate limiting (`express-rate-limit`)
-- wallet signature verification guard
-- safe rebalance decision checks
-- transaction retry logic
+- Signature checks for rebalance actions
+- Retry/failure handling for Starknet RPC operations
 
-## Starknet Sepolia Wallet Setup
+## License
 
-1. Open wallet extension (Argent X or Braavos)
-2. Switch network to **Starknet Sepolia**
-3. Fund wallet with testnet assets
-4. Connect wallet from landing/dashboard
-
-## Production Hardening Suggestions
-
-- Replace mock pool source with live Starkzap/Starknet data adapters
-- Implement nonce/challenge-based signature verification to prevent replay
-- Add persistent rebalance event logs + alerting
-- Add queue/locking for concurrent wallet rebalance safety
-- Add e2e tests for deposit + rebalance lifecycle
+Hackathon prototype. Add a license file (`MIT`, `Apache-2.0`, etc.) before public distribution.
